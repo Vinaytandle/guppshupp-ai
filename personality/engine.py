@@ -1,6 +1,19 @@
 """
 Personality Module
-Manages response tone and personality traits for the AI companion.
+
+Design Intent:
+    This module manages response tone and styling independently from content
+    generation (LLM) and conversation state (memory). By separating personality
+    from other concerns, we enable:
+    - Runtime personality switching without affecting conversation history
+    - Consistent tone application regardless of LLM backend
+    - Easy addition of new personality types
+    
+Key Design Decisions:
+    - Strictly decoupled from LLM and memory (no dependencies on either)
+    - Enum-based personality types for type safety and discoverability
+    - Simple string manipulation for tone (no LLM needed for styling)
+    - Trait-based approach allows easy customization and extension
 """
 
 from typing import Dict, Any
@@ -17,24 +30,41 @@ class PersonalityTone(Enum):
 
 
 class PersonalityEngine:
-    """Manages AI companion personality and response tone."""
+    """
+    Manages AI companion personality and response tone through trait-based styling.
+    
+    Design Intent:
+        Applies consistent personality traits to responses without requiring LLM
+        processing. This keeps personality application fast, predictable, and
+        completely independent of the LLM module, enabling personality changes
+        without regenerating content.
+    """
     
     def __init__(self, tone: PersonalityTone = PersonalityTone.FRIENDLY):
         """
-        Initialize personality engine.
+        Initialize personality engine with a specific tone.
+        
+        Design Rationale:
+            Precomputes traits for the selected tone to make runtime application
+            fast. Defaults to FRIENDLY tone to ensure welcoming user experience.
         
         Args:
-            tone: Personality tone to use
+            tone: Personality tone to use (from PersonalityTone enum)
         """
         self.tone = tone
         self.traits = self._get_traits()
         
     def _get_traits(self) -> Dict[str, str]:
         """
-        Get personality traits for current tone.
+        Get personality traits for current tone from predefined templates.
+        
+        Design Rationale:
+            Uses hardcoded trait mappings to avoid LLM dependency for personality.
+            This makes personality application instant and deterministic, while
+            keeping all trait definitions in one place for easy maintenance.
         
         Returns:
-            Dictionary of personality traits
+            Dictionary of personality traits (style, greeting, prefix, suffix)
         """
         trait_map = {
             PersonalityTone.FRIENDLY: {
@@ -72,11 +102,16 @@ class PersonalityEngine:
     
     def apply_tone(self, response: str, is_greeting: bool = False) -> str:
         """
-        Apply personality tone to a response.
+        Apply personality tone to a response through string manipulation.
+        
+        Design Rationale:
+            Uses simple prefix/suffix addition rather than LLM rewriting to keep
+            the operation fast, predictable, and independent of LLM availability.
+            This ensures personality works even in demo mode.
         
         Args:
             response: Original response text
-            is_greeting: Whether this is a greeting message
+            is_greeting: Whether this is a greeting message (uses different format)
             
         Returns:
             Response with personality tone applied
@@ -94,10 +129,15 @@ class PersonalityEngine:
     
     def get_system_prompt(self) -> str:
         """
-        Get system prompt that describes the personality.
+        Get system prompt describing the personality for LLM context.
+        
+        Design Rationale:
+            Provides a way to inform the LLM about desired personality when
+            generating responses, creating consistency between LLM-generated
+            content and personality-styled output.
         
         Returns:
-            System prompt string
+            System prompt string describing the personality traits
         """
         return f"You are a {self.traits['style']} AI companion. Respond in a {self.tone.value} manner."
     

@@ -1,6 +1,19 @@
 """
 GuppShupp AI - AI Companion Demo
-A minimal Streamlit application demonstrating an AI companion with personality.
+
+Design Intent:
+    This application demonstrates a minimal yet functional AI companion using
+    a clean modular architecture. It orchestrates three independent modules:
+    - LLM: Handles AI response generation (with optional Ollama backend)
+    - Memory: Maintains conversation history and context
+    - Personality: Applies consistent tone to responses
+    
+Key Design Decisions:
+    - Streamlit session state for conversation persistence across reruns
+    - Graceful degradation when LLM unavailable (demo mode)
+    - No hardcoded secrets (all config via environment variables)
+    - Minimal dependencies (3 packages total)
+    - Modular design enables independent testing and future extensions
 """
 
 import streamlit as st
@@ -22,7 +35,15 @@ st.set_page_config(
 
 
 def initialize_session_state():
-    """Initialize Streamlit session state variables."""
+    """
+    Initialize Streamlit session state variables for conversation persistence.
+    
+    Design Rationale:
+        Streamlit reruns the entire script on each interaction, so we use
+        session_state to maintain conversation history, LLM client, and
+        personality settings across reruns. This approach keeps the main
+        script simple while preserving state.
+    """
     if "memory" not in st.session_state:
         st.session_state.memory = create_memory(max_history=20)
     
@@ -114,13 +135,23 @@ def render_sidebar():
 
 def generate_response(prompt: str) -> str:
     """
-    Generate a response using the LLM with personality and context.
+    Generate a response by orchestrating LLM, memory, and personality modules.
+    
+    Design Rationale:
+        This function demonstrates how the three decoupled modules work together:
+        1. Memory provides conversation context
+        2. Personality provides system prompt for LLM
+        3. LLM generates response (or falls back to demo mode)
+        4. Personality applies final tone styling
+        
+        This orchestration pattern keeps modules independent while enabling
+        rich functionality when combined.
     
     Args:
         prompt: User input
         
     Returns:
-        AI response
+        AI response with personality tone applied
     """
     # Get conversation context
     context = st.session_state.memory.get_context(num_messages=5)

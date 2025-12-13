@@ -1,6 +1,18 @@
 """
 Memory Module
-Handles extraction and management of conversation memory.
+
+Design Intent:
+    This module manages conversation history independently from LLM and
+    personality logic. By maintaining a separate memory system, we enable:
+    - Conversation continuity across multiple exchanges
+    - Context extraction for improved LLM responses
+    - Future extensions like persistence or advanced memory retrieval
+    
+Key Design Decisions:
+    - Strictly decoupled from LLM and personality modules (no dependencies)
+    - Placeholder implementations for topic extraction (simple but extensible)
+    - Configurable history limits to manage memory usage
+    - Timestamp tracking for potential future time-aware features
 """
 
 from typing import List, Dict, Any
@@ -8,11 +20,24 @@ from datetime import datetime
 
 
 class ConversationMemory:
-    """Manages conversation history and memory extraction."""
+    """
+    Manages conversation history and memory extraction.
+    
+    Design Intent:
+        Provides a centralized store for conversation state that is completely
+        independent of how messages are generated (LLM) or styled (personality).
+        This separation allows each component to evolve independently and makes
+        testing easier.
+    """
     
     def __init__(self, max_history: int = 10):
         """
-        Initialize conversation memory.
+        Initialize conversation memory with bounded storage.
+        
+        Design Rationale:
+            Limits history size to prevent unbounded memory growth while
+            keeping recent context for meaningful conversations. The sliding
+            window approach is simple and predictable.
         
         Args:
             max_history: Maximum number of messages to keep in history
@@ -61,10 +86,16 @@ class ConversationMemory:
     
     def extract_topics(self) -> List[str]:
         """
-        Extract key topics from conversation history.
+        Extract key topics from conversation history using simple heuristics.
+        
+        Design Rationale:
+            Uses placeholder logic (word length filtering) to demonstrate the
+            concept without adding NLP library dependencies. This keeps the
+            project minimal while showing where advanced topic modeling could
+            be added in the future.
         
         Returns:
-            List of identified topics (placeholder implementation)
+            List of identified topics (currently simple keyword extraction)
         """
         # Placeholder: In a real implementation, this would use NLP/LLM
         # to extract meaningful topics from the conversation
@@ -81,10 +112,15 @@ class ConversationMemory:
     
     def get_summary(self) -> str:
         """
-        Get a summary of the conversation.
+        Get a summary of the conversation with basic statistics.
+        
+        Design Rationale:
+            Provides a simple text summary without requiring LLM-based
+            summarization. This demonstrates the summary concept while keeping
+            dependencies minimal and execution fast.
         
         Returns:
-            Conversation summary (placeholder implementation)
+            Conversation summary with message count and topics
         """
         if not self.history:
             return "No conversation history"
