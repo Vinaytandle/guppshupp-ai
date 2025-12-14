@@ -29,7 +29,7 @@ class OllamaClient:
         both production and demo/development scenarios.
     """
     
-    def __init__(self, base_url: Optional[str] = None, model: str = "llama2"):
+    def __init__(self, base_url: Optional[str] = None, model: str = "mistral"):
         """
         Initialize Ollama client with configurable endpoint.
         
@@ -39,10 +39,11 @@ class OllamaClient:
         
         Args:
             base_url: Ollama API base URL (defaults to env var OLLAMA_BASE_URL or localhost)
-            model: Model name to use (defaults to llama2)
+            model: Model name to use (defaults to env var OLLAMA_MODEL or "mistral")
         """
         self.base_url = base_url or os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-        self.model = model
+        # Allow model override via environment. Default to "mistral" (smaller than llama2).
+        self.model = os.getenv("OLLAMA_MODEL", model)
         
     def generate(self, prompt: str, context: Optional[str] = None) -> str:
         """
@@ -62,7 +63,7 @@ class OllamaClient:
         """
         try:
             full_prompt = f"{context}\n\n{prompt}" if context else prompt
-            
+
             response = requests.post(
                 f"{self.base_url}/api/generate",
                 json={
@@ -72,16 +73,19 @@ class OllamaClient:
                 },
                 timeout=30
             )
-            
+
             if response.status_code == 200:
                 return response.json().get("response", "")
             else:
-                return f"Error: Unable to connect to Ollama (status {response.status_code})"
-                
+                # Non-200 → fall back to mock response so UI never crashes
+                return self.mock_response(prompt)
+
         except requests.exceptions.ConnectionError:
-            return "Error: Cannot connect to Ollama. Please ensure Ollama is running."
-        except Exception as e:
-            return f"Error: {str(e)}"
+            # Service not reachable → mock response
+            return self.mock_response(prompt)
+        except Exception:
+            # Any other error → mock response
+            return self.mock_response(prompt)
     
     def is_available(self) -> bool:
         """
@@ -101,8 +105,42 @@ class OllamaClient:
         except Exception:
             return False
 
+    def mock_response(self, prompt: str, context: Optional[str] = None) -> str:
+        """
+        Return a friendly mock response when Ollama or the model is unavailable.
 
-def get_llm_client(model: str = "llama2") -> OllamaClient:
+        This ensures the app is usable for demos, reviews, and low-resource
+        environments without requiring local model setup.
+        """
+        # Lightweight personality detection from context (system prompt)
+        personality = "friendly"
+        try:
+            ctx = (context or "").lower()
+            if "professional" in ctx:
+                personality = "professional"
+            elif "empathetic" in ctx:
+                personality = "empathetic"
+            elif "casual" in ctx:
+                personality = "casual"
+            elif "enthusiastic" in ctx:
+                personality = "enthusiastic"
+        except Exception:
+            pass
+
+        bases = {
+            "friendly": "Sure! 😊 Here’s a simple suggestion to help you move forward.",
+            "professional": "Here is a concise and structured response to your request.",
+            "empathetic": "I understand what you’re asking. Let’s take this step by step.",
+            "casual": "No worries — here’s a quick tip to keep things rolling.",
+            "enthusiastic": "Awesome! Let’s dive in with a quick, helpful pointer.",
+        }
+
+        prefix = bases.get(personality, bases["friendly"])
+
+        return f"{prefix} (Mock response — generated without a live LLM.)"
+
+
+def get_llm_client(model: str = "mistral") -> OllamaClient:
     """
     Factory function to get an LLM client instance.
     
@@ -112,9 +150,12 @@ def get_llm_client(model: str = "llama2") -> OllamaClient:
         the current implementation minimal and focused on Ollama.
     
     Args:
-        model: Model name to use (allows testing with different Ollama models)
+        model: Model name to use (allows testing with different Ollama models). Defaults
+               to env OLLAMA_MODEL or "mistral".
         
     Returns:
         Configured OllamaClient instance
     """
-    return OllamaClient(model=model)
+    # Respect environment override even if a model is passed
+    env_model = os.getenv("OLLAMA_MODEL")
+    return OllamaClient(model=env_model or model)
